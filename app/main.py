@@ -1,0 +1,59 @@
+import asyncio
+import logging
+from app.config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, CHECK_INTERVAL, SYMBOL
+from app.services.market_service import MarketService
+from app.services.indicator_service import IndicatorService
+from app.services.strategy_service import StrategyService
+from app.services.telegram_service import TelegramService
+from app.services.health_server import start_health_server
+
+# Setup logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+class XRPBot:
+    def __init__(self):
+        self.market = MarketService()
+        self.strategy = StrategyService()
+        self.telegram = TelegramService(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)
+
+    async def run_analysis(self):
+        logger.info("Running market analysis...")
+        try:
+            # 1. Fetch data
+            data = self.market.multi_timeframe_data(SYMBOL, ["1h", "4h"])
+            
+            if "1h" not in data or "4h" not in data:
+                logger.error("Insufficient market data fetched.")
+                return
+
+            # 2. Calculate Indicators
+            indicators_1h = IndicatorService.analyze(data["1h"])
+            indicators_4h = IndicatorService.analyze(data["4h"])
+
+            # 3. Generate Report via Strategy Service (AI-powered)
+            report = await self.strategy.generate_report(indicators_1h, indicators_4h)
+
+            # 4. Send to Telegram
+            await self.telegram.send_message(report)
+            logger.info("Report sent to Telegram.")
+
+        except Exception as e:
+            logger.error(f"Error in run_analysis: {e}")
+            await self.telegram.send_message(f"⚠️ *Bot Error:* {str(e)}")
+
+    async def start(self):
+        # Start health check server for Render
+        start_health_server()
+        
+        # Send startup notification
+        await self.telegram.startup_notification()
+        
+        while True:
+            await self.run_analysis()
+            logger.info(f"Sleeping for {CHECK_INTERVAL} seconds...")
+            await asyncio.sleep(CHECK_INTERVAL)
+
+if __name__ == "__main__":
+    bot = XRPBot()
+    asyncio.run(bot.start())

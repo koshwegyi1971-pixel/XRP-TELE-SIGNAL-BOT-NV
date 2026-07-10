@@ -1,0 +1,9 @@
+python-telegram-bot==22.2
+requests==2.32.4
+python-dotenv==1.2.2
+pandas==2.2.2
+pandas-ta==0.3.14b0
+ccxt==4.4.15
+openai==1.54.3
+aiohttp==3.10.10
+apscheduler==3.10.4
