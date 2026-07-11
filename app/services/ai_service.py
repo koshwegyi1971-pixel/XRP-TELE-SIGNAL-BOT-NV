@@ -1,4 +1,5 @@
 import logging
+import httpx
 from openai import AsyncOpenAI
 from app.config import OPENROUTER_API_KEY, OPENROUTER_MODEL
 
@@ -6,10 +7,14 @@ logger = logging.getLogger(__name__)
 
 class AIService:
     def __init__(self):
-        # Use AsyncOpenAI for async environments
+        # Explicitly initialize with a clean httpx client to avoid 'proxies' argument issues
+        # that can occur in some environments (like Render) due to automatic proxy detection.
+        http_client = httpx.AsyncClient()
+        
         self.client = AsyncOpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=OPENROUTER_API_KEY,
+            http_client=http_client
         )
 
     async def get_market_analysis(self, market_data: dict) -> str:
