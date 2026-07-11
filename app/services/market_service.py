@@ -12,14 +12,26 @@ class MarketService:
             'enableRateLimit': True,
         })
 
-    def fetch_ohlcv(self, symbol=SYMBOL, timeframe='1h', limit=100):
+    def fetch_ohlcv(self, symbol=SYMBOL, timeframe='1h', limit=300):
         """
         Fetches OHLCV data and returns a pandas DataFrame.
+        Increased limit to 300 to ensure enough data for EMA200.
         """
         try:
+            # For Kraken, ensure we use the correct symbol format if needed
+            # but CCXT usually handles 'XRP/USDT' or 'XRP/USD' well.
             ohlcv = self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+            if not ohlcv:
+                logger.error(f"No OHLCV data returned for {symbol} on {timeframe}")
+                return pd.DataFrame()
+                
             df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+            
+            # Convert columns to numeric to be safe
+            for col in ['open', 'high', 'low', 'close', 'volume']:
+                df[col] = pd.to_numeric(df[col])
+                
             return df
         except Exception as e:
             logger.error(f"Error fetching data from {EXCHANGE_ID}: {e}")
@@ -39,4 +51,6 @@ class MarketService:
             df = self.fetch_ohlcv(symbol, tf)
             if not df.empty:
                 data[tf] = df
+            else:
+                logger.warning(f"Empty data for timeframe {tf}")
         return data
