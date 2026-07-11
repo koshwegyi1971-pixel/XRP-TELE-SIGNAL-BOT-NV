@@ -1,12 +1,13 @@
 import logging
-from openai import OpenAI
+from openai import AsyncOpenAI
 from app.config import OPENROUTER_API_KEY, OPENROUTER_MODEL
 
 logger = logging.getLogger(__name__)
 
 class AIService:
     def __init__(self):
-        self.client = OpenAI(
+        # Use AsyncOpenAI for async environments
+        self.client = AsyncOpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=OPENROUTER_API_KEY,
         )
@@ -21,7 +22,7 @@ class AIService:
         prompt = self._build_prompt(market_data)
         
         try:
-            response = self.client.chat.completions.create(
+            response = await self.client.chat.completions.create(
                 model=OPENROUTER_MODEL,
                 messages=[
                     {"role": "system", "content": "You are an institutional-grade crypto trading expert. Provide concise, data-driven market analysis and DCA recommendations for XRP."},
