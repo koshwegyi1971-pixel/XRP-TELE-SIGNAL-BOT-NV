@@ -10,20 +10,24 @@ class StrategyService:
         self.ai = AIService()
         self.fa_sentiment = FASentimentService()
 
-    async def generate_report(self, indicators_1h, indicators_4h, btc_context):
+    async def generate_report(self, indicators_1h, indicators_4h, market_context):
         """
-        Orchestrates the analysis and generates a final institutional-grade report.
+        Orchestrates the analysis using exchange-direct data.
         """
         try:
-            # 1. Detect Market Regime
             regime = RegimeService.detect(indicators_1h, indicators_4h)
-            
-            # 2. Get FA & Sentiment
             sentiment = self.fa_sentiment.get_sentiment()
-            fundamentals = self.fa_sentiment.get_xrp_fundamentals()
             news = self.fa_sentiment.get_news_sentiment()
             
-            # 3. Prepare data for AI
+            # Use ticker info from market_context for reliable fundamentals
+            xrp_ticker = market_context.get("xrp_ticker", {})
+            btc_ticker = market_context.get("btc", {})
+            
+            fundamentals = (
+                f"- 24h Volume: ${xrp_ticker.get('volume_24h', 0):,.0f}\n"
+                f"- 24h Change: {xrp_ticker.get('change_24h', 0):+.2f}%"
+            )
+            
             analysis_data = {
                 "price": indicators_1h.get('price'),
                 "regime": regime,
@@ -32,14 +36,15 @@ class StrategyService:
                 "indicators_4h": indicators_4h,
                 "fundamentals": fundamentals,
                 "news": news,
-                "btc_context": btc_context
+                "btc_context": {
+                    "price": btc_ticker.get('last'),
+                    "change_24h": btc_ticker.get('change_24h')
+                }
             }
             
-            # 4. Get AI Analysis
             ai_report = await self.ai.get_market_analysis(analysis_data)
-            
             return ai_report
             
         except Exception as e:
-            logger.error(f"Error generating strategy report: {e}")
-            return f"Error generating strategy report: {str(e)}"
+            logger.error(f"Error: {e}")
+            return f"Error: {str(e)}"

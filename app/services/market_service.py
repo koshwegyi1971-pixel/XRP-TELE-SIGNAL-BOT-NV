@@ -26,25 +26,32 @@ class MarketService:
             logger.error(f"Error fetching {symbol}: {e}")
             return pd.DataFrame()
 
+    def get_ticker_info(self, symbol=SYMBOL):
+        """
+        Fetches 24h ticker info directly from the exchange.
+        """
+        try:
+            ticker = self.exchange.fetch_ticker(symbol)
+            return {
+                "last": ticker['last'],
+                "change_24h": ticker['percentage'],
+                "volume_24h": ticker['quoteVolume']
+            }
+        except Exception as e:
+            logger.error(f"Error fetching ticker info: {e}")
+            return None
+
     def get_market_context(self):
-        """
-        Fetches data for both XRP and BTC to provide market context.
-        """
         xrp_data = self.multi_timeframe_data(SYMBOL, ["1h", "4h"])
+        xrp_ticker = self.get_ticker_info(SYMBOL)
         
-        # Fetch BTC for correlation (usually BTC/USDT or BTC/USD)
         btc_symbol = "BTC/USDT" if "USDT" in SYMBOL else "BTC/USD"
-        btc_1h = self.fetch_ohlcv(btc_symbol, "1h", limit=100)
-        
-        btc_price = btc_1h.iloc[-1]['close'] if not btc_1h.empty else None
-        btc_change = ((btc_1h.iloc[-1]['close'] / btc_1h.iloc[0]['close']) - 1) * 100 if not btc_1h.empty else 0
+        btc_ticker = self.get_ticker_info(btc_symbol)
         
         return {
             "xrp": xrp_data,
-            "btc": {
-                "price": btc_price,
-                "change_24h": round(btc_change, 2)
-            }
+            "xrp_ticker": xrp_ticker,
+            "btc": btc_ticker
         }
 
     def multi_timeframe_data(self, symbol=SYMBOL, timeframes=['15m', '1h', '4h']):

@@ -23,7 +23,6 @@ class XRPBot:
             # 1. Fetch data for XRP and BTC
             market_context = self.market.get_market_context()
             xrp_data = market_context["xrp"]
-            btc_context = market_context["btc"]
             
             if "1h" not in xrp_data or "4h" not in xrp_data:
                 logger.error("Insufficient market data fetched.")
@@ -34,7 +33,7 @@ class XRPBot:
             indicators_4h = IndicatorService.analyze(xrp_data["4h"])
 
             # 3. Generate Report via Strategy Service (Institutional Grade)
-            report = await self.strategy.generate_report(indicators_1h, indicators_4h, btc_context)
+            report = await self.strategy.generate_report(indicators_1h, indicators_4h, market_context)
 
             # 4. Send to Telegram
             await self.telegram.send_message(report)

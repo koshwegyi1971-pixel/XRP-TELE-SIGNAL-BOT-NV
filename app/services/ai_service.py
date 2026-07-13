@@ -16,7 +16,7 @@ class AIService:
 
     async def get_market_analysis(self, market_data: dict) -> str:
         if not OPENROUTER_API_KEY:
-            return "AI Analysis unavailable: OPENROUTER_API_KEY not set."
+            return "AI Analysis unavailable."
 
         prompt = self._build_prompt(market_data)
         
@@ -28,9 +28,10 @@ class AIService:
                         "role": "system", 
                         "content": (
                             "You are an institutional-grade crypto trading expert. "
-                            "Provide a professional, data-driven market report for XRP. "
-                            "Focus on confluence between indicators and market structure. "
-                            "Use Markdown tables and clear sections. Keep it concise."
+                            "Provide a professional, data-driven market report. "
+                            "Always include precise Stop Loss (SL) and Take Profit (TP) levels. "
+                            "Focus on risk management and market structure. "
+                            "Use Markdown tables and keep it concise."
                         )
                     },
                     {"role": "user", "content": prompt}
@@ -40,8 +41,8 @@ class AIService:
             )
             return response.choices[0].message.content
         except Exception as e:
-            logger.error(f"Error calling OpenRouter: {e}")
-            return f"Error generating AI analysis: {str(e)}"
+            logger.error(f"Error: {e}")
+            return f"Error: {str(e)}"
 
     def _build_prompt(self, data: dict) -> str:
         btc = data.get('btc_context', {})
@@ -61,7 +62,7 @@ Analyze the following XRP market data and generate an institutional report:
 | RSI | {data.get('indicators_1h', {}).get('rsi', 'N/A')} | {data.get('indicators_4h', {}).get('rsi', 'N/A')} |
 | Vol. Ratio | {data.get('indicators_1h', {}).get('volume_ratio', 'N/A')}x | N/A |
 | BB Status | {data.get('indicators_1h', {}).get('bb_status', 'N/A')} | N/A |
-| ADX (Strength) | {data.get('indicators_1h', {}).get('adx', 'N/A')} | N/A |
+| ATR (Volatility) | {data.get('indicators_1h', {}).get('atr', 'N/A')} | N/A |
 
 ### 3. MARKET STRUCTURE (PIVOT LEVELS)
 - **Pivot Point:** {data.get('indicators_1h', {}).get('pivot', 'N/A')}
@@ -73,9 +74,9 @@ Analyze the following XRP market data and generate an institutional report:
 - **News Sentiment:** {data.get('news', 'N/A')}
 
 ### INSTRUCTIONS
-1. Evaluate if XRP is showing strength relative to BTC.
-2. Use Pivot Levels to define precise Buy/Sell zones.
-3. **Recommendation:** (ACCUMULATE, HOLD, or REDUCE).
-4. **DCA Zones:** Provide clear price ranges for entries and exits.
+1. Use Pivot Levels to define precise Entry, Stop Loss (SL), and Take Profit (TP) levels.
+2. **Recommendation:** (ACCUMULATE, HOLD, or REDUCE).
+3. **DCA Zones:** Provide clear price ranges for entries.
+4. **Risk Management:** MUST specify SL and TP levels for the current recommendation.
 5. Keep the report clean, using tables and bullet points.
 """
