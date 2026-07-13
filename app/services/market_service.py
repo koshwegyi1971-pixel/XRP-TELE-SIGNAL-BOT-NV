@@ -13,37 +13,39 @@ class MarketService:
         })
 
     def fetch_ohlcv(self, symbol=SYMBOL, timeframe='1h', limit=300):
-        """
-        Fetches OHLCV data and returns a pandas DataFrame.
-        Increased limit to 300 to ensure enough data for EMA200.
-        """
         try:
-            # For Kraken, ensure we use the correct symbol format if needed
-            # but CCXT usually handles 'XRP/USDT' or 'XRP/USD' well.
             ohlcv = self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
             if not ohlcv:
-                logger.error(f"No OHLCV data returned for {symbol} on {timeframe}")
                 return pd.DataFrame()
-                
             df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-            
-            # Convert columns to numeric to be safe
             for col in ['open', 'high', 'low', 'close', 'volume']:
                 df[col] = pd.to_numeric(df[col])
-                
             return df
         except Exception as e:
-            logger.error(f"Error fetching data from {EXCHANGE_ID}: {e}")
+            logger.error(f"Error fetching {symbol}: {e}")
             return pd.DataFrame()
 
-    def get_current_price(self, symbol=SYMBOL):
-        try:
-            ticker = self.exchange.fetch_ticker(symbol)
-            return ticker['last']
-        except Exception as e:
-            logger.error(f"Error fetching ticker: {e}")
-            return None
+    def get_market_context(self):
+        """
+        Fetches data for both XRP and BTC to provide market context.
+        """
+        xrp_data = self.multi_timeframe_data(SYMBOL, ["1h", "4h"])
+        
+        # Fetch BTC for correlation (usually BTC/USDT or BTC/USD)
+        btc_symbol = "BTC/USDT" if "USDT" in SYMBOL else "BTC/USD"
+        btc_1h = self.fetch_ohlcv(btc_symbol, "1h", limit=100)
+        
+        btc_price = btc_1h.iloc[-1]['close'] if not btc_1h.empty else None
+        btc_change = ((btc_1h.iloc[-1]['close'] / btc_1h.iloc[0]['close']) - 1) * 100 if not btc_1h.empty else 0
+        
+        return {
+            "xrp": xrp_data,
+            "btc": {
+                "price": btc_price,
+                "change_24h": round(btc_change, 2)
+            }
+        }
 
     def multi_timeframe_data(self, symbol=SYMBOL, timeframes=['15m', '1h', '4h']):
         data = {}
@@ -51,6 +53,4 @@ class MarketService:
             df = self.fetch_ohlcv(symbol, tf)
             if not df.empty:
                 data[tf] = df
-            else:
-                logger.warning(f"Empty data for timeframe {tf}")
         return data

@@ -1,6 +1,7 @@
 import pandas as pd
 import pandas_ta as ta
 import logging
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -8,41 +9,54 @@ class IndicatorService:
     @staticmethod
     def analyze(df: pd.DataFrame):
         """
-        Calculates indicators for the given DataFrame.
+        Calculates advanced indicators for the given DataFrame.
         """
         if df is None or df.empty or len(df) < 20:
             logger.warning("Insufficient data for indicator analysis.")
             return {}
 
         try:
-            # Trend
+            # 1. Trend Indicators (EMA)
             df['ema20'] = ta.ema(df['close'], length=20)
             df['ema50'] = ta.ema(df['close'], length=50)
-            
-            # EMA200 needs at least 200 bars
             if len(df) >= 200:
                 df['ema200'] = ta.ema(df['close'], length=200)
             else:
                 df['ema200'] = None
 
-            # Momentum
+            # 2. Momentum (RSI, MACD)
             df['rsi'] = ta.rsi(df['close'], length=14)
             macd = ta.macd(df['close'])
             if macd is not None:
                 df = pd.concat([df, macd], axis=1)
 
-            # Volatility
+            # 3. Volatility (ATR, Bollinger Bands)
             df['atr'] = ta.atr(df['high'], df['low'], df['close'], length=14)
+            bbands = ta.bbands(df['close'], length=20, std=2)
+            if bbands is not None:
+                df = pd.concat([df, bbands], axis=1)
             
-            # Trend Strength
+            # 4. Trend Strength (ADX)
             adx = ta.adx(df['high'], df['low'], df['close'], length=14)
             if adx is not None:
                 df = pd.concat([df, adx], axis=1)
 
-            # Get the last row that has a price
+            # 5. Volume Analysis (Volume SMA, Volume Ratio)
+            df['v_sma20'] = ta.sma(df['volume'], length=20)
+            df['v_ratio'] = df['volume'] / df['v_sma20']
+
+            # 6. Pivot Points (Classic) - Based on previous candle for current levels
+            # We calculate this manually as pandas_ta pivot points can be tricky with different styles
+            prev_row = df.iloc[-2]
+            p = (prev_row['high'] + prev_row['low'] + prev_row['close']) / 3
+            r1 = (2 * p) - prev_row['low']
+            s1 = (2 * p) - prev_row['high']
+            r2 = p + (prev_row['high'] - prev_row['low'])
+            s2 = p - (prev_row['high'] - prev_row['low'])
+
             latest = df.iloc[-1]
             
-            # Determine Trend
+            # Determine Trend & Signal Strength
             trend = "Sideways"
             ema20 = latest.get('ema20')
             ema50 = latest.get('ema50')
@@ -50,34 +64,39 @@ class IndicatorService:
 
             if ema20 and ema50:
                 if ema200:
-                    if ema20 > ema50 > ema200:
-                        trend = "Strong Bullish"
-                    elif ema20 < ema50 < ema200:
-                        trend = "Strong Bearish"
-                    elif ema20 > ema50:
-                        trend = "Bullish"
-                    else:
-                        trend = "Bearish"
+                    if ema20 > ema50 > ema200: trend = "Strong Bullish"
+                    elif ema20 < ema50 < ema200: trend = "Strong Bearish"
+                    elif ema20 > ema50: trend = "Bullish"
+                    else: trend = "Bearish"
                 else:
-                    if ema20 > ema50:
-                        trend = "Bullish (Short-term)"
-                    else:
-                        trend = "Bearish (Short-term)"
+                    trend = "Bullish (ST)" if ema20 > ema50 else "Bearish (ST)"
 
-            # Safe extraction of indicators with fallbacks
+            # BB Position
+            bb_pos = "Inside"
+            if not pd.isna(latest.get('BBU_20_2.0')) and latest['close'] > latest['BBU_20_2.0']:
+                bb_pos = "Overbought (Upper BB Breakout)"
+            elif not pd.isna(latest.get('BBL_20_2.0')) and latest['close'] < latest['BBL_20_2.0']:
+                bb_pos = "Oversold (Lower BB Breakout)"
+
             return {
                 "price": round(float(latest['close']), 4),
                 "rsi": round(float(latest['rsi']), 2) if not pd.isna(latest.get('rsi')) else "N/A",
                 "macd": round(float(latest['MACD_12_26_9']), 6) if not pd.isna(latest.get('MACD_12_26_9')) else "N/A",
-                "macd_signal": round(float(latest['MACDs_12_26_9']), 6) if not pd.isna(latest.get('MACDs_12_26_9')) else "N/A",
                 "macd_hist": round(float(latest['MACDh_12_26_9']), 6) if not pd.isna(latest.get('MACDh_12_26_9')) else "N/A",
                 "atr": round(float(latest['atr']), 6) if not pd.isna(latest.get('atr')) else "N/A",
                 "adx": round(float(latest['ADX_14']), 2) if not pd.isna(latest.get('ADX_14')) else "N/A",
                 "ema20": round(float(ema20), 4) if ema20 else "N/A",
                 "ema50": round(float(ema50), 4) if ema50 else "N/A",
                 "ema200": round(float(ema200), 4) if ema200 else "N/A",
+                "volume_ratio": round(float(latest['v_ratio']), 2) if not pd.isna(latest.get('v_ratio')) else "N/A",
+                "bb_status": bb_pos,
+                "pivot": round(p, 4),
+                "r1": round(r1, 4),
+                "s1": round(s1, 4),
+                "r2": round(r2, 4),
+                "s2": round(s2, 4),
                 "trend": trend
             }
         except Exception as e:
             logger.error(f"Error calculating indicators: {e}")
-            return {"price": round(float(df.iloc[-1]['close']), 4), "trend": "Error in Analysis"}
+            return {"price": round(float(df.iloc[-1]['close']), 4), "trend": "Error"}

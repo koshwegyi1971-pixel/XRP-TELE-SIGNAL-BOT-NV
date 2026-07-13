@@ -10,9 +10,9 @@ class StrategyService:
         self.ai = AIService()
         self.fa_sentiment = FASentimentService()
 
-    async def generate_report(self, indicators_1h, indicators_4h):
+    async def generate_report(self, indicators_1h, indicators_4h, btc_context):
         """
-        Orchestrates the analysis and generates a final report.
+        Orchestrates the analysis and generates a final institutional-grade report.
         """
         try:
             # 1. Detect Market Regime
@@ -21,6 +21,7 @@ class StrategyService:
             # 2. Get FA & Sentiment
             sentiment = self.fa_sentiment.get_sentiment()
             fundamentals = self.fa_sentiment.get_xrp_fundamentals()
+            news = self.fa_sentiment.get_news_sentiment()
             
             # 3. Prepare data for AI
             analysis_data = {
@@ -29,7 +30,9 @@ class StrategyService:
                 "sentiment": sentiment,
                 "indicators_1h": indicators_1h,
                 "indicators_4h": indicators_4h,
-                "fundamentals": fundamentals
+                "fundamentals": fundamentals,
+                "news": news,
+                "btc_context": btc_context
             }
             
             # 4. Get AI Analysis

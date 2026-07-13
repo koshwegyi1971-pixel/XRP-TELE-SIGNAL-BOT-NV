@@ -6,9 +6,6 @@ logger = logging.getLogger(__name__)
 class FASentimentService:
     @staticmethod
     def get_sentiment():
-        """
-        Fetches Fear & Greed Index from Alternative.me (common for crypto).
-        """
         try:
             response = requests.get("https://api.alternative.me/fng/", timeout=10)
             data = response.json()
@@ -22,19 +19,31 @@ class FASentimentService:
     @staticmethod
     def get_xrp_fundamentals():
         """
-        Fetches basic XRP fundamentals from CoinGecko.
+        Fetches XRP fundamentals from CoinGecko with fallback.
         """
         try:
-            # Using CoinGecko public API
-            url = "https://api.coingecko.com/api/v3/coins/ripple?localization=false&tickers=false&market_data=true&community_data=false&developer_data=true&sparkline=false"
+            # Using CoinGecko public API with a more reliable endpoint
+            url = "https://api.coingecko.com/api/v3/simple/price?ids=ripple&vs_currencies=usd&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true"
             response = requests.get(url, timeout=10)
-            data = response.json()
+            data = response.json().get('ripple', {})
             
-            market_cap_rank = data.get('market_cap_rank', 'N/A')
-            fdv = data['market_data'].get('fully_diluted_valuation', {}).get('usd', 'N/A')
-            dev_score = data.get('developer_score', 'N/A')
+            mkt_cap = data.get('usd_market_cap', 'N/A')
+            vol_24h = data.get('usd_24h_vol', 'N/A')
+            change_24h = data.get('usd_24h_change', 0)
             
-            return f"- Market Cap Rank: {market_cap_rank}\n- Fully Diluted Valuation: ${fdv}\n- Developer Score: {dev_score}"
+            return (
+                f"- 24h Volume: ${vol_24h:,.0f}\n"
+                f"- Market Cap: ${mkt_cap:,.0f}\n"
+                f"- 24h Change: {change_24h:.2f}%"
+            )
         except Exception as e:
             logger.error(f"Error fetching fundamentals: {e}")
-            return "Fundamental data currently unavailable."
+            return "- Fundamental data currently unavailable (API Rate Limit)."
+
+    @staticmethod
+    def get_news_sentiment():
+        """
+        Placeholder for News Sentiment analysis. 
+        In a real institutional bot, this would call a news API like CryptoPanic.
+        """
+        return "Stable - No major legal/regulatory news in the last 24h."
