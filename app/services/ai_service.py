@@ -8,7 +8,6 @@ logger = logging.getLogger(__name__)
 class AIService:
     def __init__(self):
         # Explicitly initialize with a clean httpx client to avoid 'proxies' argument issues
-        # that can occur in some environments (like Render) due to automatic proxy detection.
         http_client = httpx.AsyncClient()
         
         self.client = AsyncOpenAI(
@@ -30,11 +29,19 @@ class AIService:
             response = await self.client.chat.completions.create(
                 model=OPENROUTER_MODEL,
                 messages=[
-                    {"role": "system", "content": "You are an institutional-grade crypto trading expert. Provide concise, data-driven market analysis and DCA recommendations for XRP."},
+                    {
+                        "role": "system", 
+                        "content": (
+                            "You are an institutional-grade crypto trading expert. "
+                            "Provide a structured, data-driven market report for XRP. "
+                            "Use a 'Facts and Figures' style. Use Markdown tables for indicators. "
+                            "Keep commentary extremely concise and professional."
+                        )
+                    },
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.7,
-                max_tokens=800
+                temperature=0.5,
+                max_tokens=1000
             )
             return response.choices[0].message.content
         except Exception as e:
@@ -43,27 +50,30 @@ class AIService:
 
     def _build_prompt(self, data: dict) -> str:
         return f"""
-Analyze the following XRP market data and provide a summary report:
+Analyze the following XRP market data and generate a structured report:
 
-Current Price: ${data.get('price', 'N/A')}
-Market Regime: {data.get('regime', 'N/A')}
-Sentiment: {data.get('sentiment', 'N/A')}
+### MARKET OVERVIEW
+- **Price:** ${data.get('price', 'N/A')}
+- **Regime:** {data.get('regime', 'N/A')}
+- **Sentiment:** {data.get('sentiment', 'N/A')}
 
-Technical Indicators (1H):
-- RSI: {data.get('indicators_1h', {}).get('rsi', 'N/A')}
-- MACD: {data.get('indicators_1h', {}).get('macd', 'N/A')}
-- Trend: {data.get('indicators_1h', {}).get('trend', 'N/A')}
+### TECHNICAL DATA
+| Indicator | 1H Timeframe | 4H Timeframe |
+| :--- | :--- | :--- |
+| RSI | {data.get('indicators_1h', {}).get('rsi', 'N/A')} | {data.get('indicators_4h', {}).get('rsi', 'N/A')} |
+| MACD | {data.get('indicators_1h', {}).get('macd', 'N/A')} | N/A |
+| Trend | {data.get('indicators_1h', {}).get('trend', 'N/A')} | {data.get('indicators_4h', {}).get('trend', 'N/A')} |
+| EMA 20 | {data.get('indicators_1h', {}).get('ema20', 'N/A')} | N/A |
+| EMA 50 | {data.get('indicators_1h', {}).get('ema50', 'N/A')} | N/A |
+| EMA 200 | {data.get('indicators_1h', {}).get('ema200', 'N/A')} | N/A |
 
-Technical Indicators (4H):
-- RSI: {data.get('indicators_4h', {}).get('rsi', 'N/A')}
-- Trend: {data.get('indicators_4h', {}).get('trend', 'N/A')}
-
-Fundamental Highlights:
+### FUNDAMENTALS
 {data.get('fundamentals', 'N/A')}
 
-Requirements:
-1. Summarize current market condition.
-2. Provide a clear recommendation (ACCUMULATE, HOLD, or REDUCE).
-3. Identify specific DCA buy/sell price zones.
-4. Keep it professional and concise.
+### REQUIREMENTS
+1. Use a clear header for each section.
+2. Use a Markdown table for the Technical Data section.
+3. **Recommendation:** Provide one clear action (ACCUMULATE, HOLD, or REDUCE).
+4. **DCA Strategy:** List specific Buy/Sell zones with prices.
+5. Focus on facts and figures; avoid long paragraphs.
 """
