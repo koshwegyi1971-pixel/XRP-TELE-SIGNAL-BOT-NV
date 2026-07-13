@@ -27,17 +27,15 @@ class AIService:
                     {
                         "role": "system", 
                         "content": (
-                            "You are an institutional-grade crypto trading expert. "
-                            "Provide a professional, data-driven market report. "
-                            "Always include precise Stop Loss (SL) and Take Profit (TP) levels. "
-                            "Focus on risk management and market structure. "
-                            "Use Markdown tables and keep it concise."
+                            "You are a professional trading desk AI. Generate a DECISION-FIRST report. "
+                            "Structure: Executive Summary (Decision + Confidence + Action), Trading Plan (exact zones), Evidence (why). "
+                            "Traders need to make decisions in seconds, not read tables. Be direct and actionable."
                         )
                     },
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.4,
-                max_tokens=1200
+                temperature=0.3,
+                max_tokens=1500
             )
             return response.choices[0].message.content
         except Exception as e:
@@ -46,37 +44,56 @@ class AIService:
 
     def _build_prompt(self, data: dict) -> str:
         btc = data.get('btc_context', {})
+        ind_1h = data.get('indicators_1h', {})
+        ind_4h = data.get('indicators_4h', {})
+        
         return f"""
-Analyze the following XRP market data and generate an institutional report:
+Generate a DECISION-FIRST trading report for XRP. Use this exact 3-section structure:
 
-### 1. MARKET CONTEXT
-- **XRP Price:** ${data.get('price', 'N/A')}
-- **BTC Price:** ${btc.get('price', 'N/A')} ({btc.get('change_24h', 0)}% 24h)
-- **Market Regime:** {data.get('regime', 'N/A')}
-- **Fear & Greed:** {data.get('sentiment', 'N/A')}
+## 1. EXECUTIVE SUMMARY
+- **Decision:** (ACCUMULATE / HOLD / REDUCE)
+- **Confidence:** (HIGH / MEDIUM / LOW)
+- **Action:** (1-2 sentence directive for traders)
 
-### 2. TECHNICAL ANALYSIS (CONFLUENCE)
-| Indicator | 1H Timeframe | 4H Timeframe |
-| :--- | :--- | :--- |
-| Trend | {data.get('indicators_1h', {}).get('trend', 'N/A')} | {data.get('indicators_4h', {}).get('trend', 'N/A')} |
-| RSI | {data.get('indicators_1h', {}).get('rsi', 'N/A')} | {data.get('indicators_4h', {}).get('rsi', 'N/A')} |
-| Vol. Ratio | {data.get('indicators_1h', {}).get('volume_ratio', 'N/A')}x | N/A |
-| BB Status | {data.get('indicators_1h', {}).get('bb_status', 'N/A')} | N/A |
-| ATR (Volatility) | {data.get('indicators_1h', {}).get('atr', 'N/A')} | N/A |
+## 2. TRADING PLAN
+- **Buy Zone:** $X.XX - $X.XX (Entry prices)
+- **Stop Loss:** $X.XX (Hard stop)
+- **Take Profit:** $X.XX (Exit target)
+- **Position Size:** (% of capital based on risk)
+- **Risk/Reward Ratio:** (e.g., 1:2)
 
-### 3. MARKET STRUCTURE (PIVOT LEVELS)
-- **Pivot Point:** {data.get('indicators_1h', {}).get('pivot', 'N/A')}
-- **Resistance:** R1: {data.get('indicators_1h', {}).get('r1', 'N/A')} | R2: {data.get('indicators_1h', {}).get('r2', 'N/A')}
-- **Support:** S1: {data.get('indicators_1h', {}).get('s1', 'N/A')} | S2: {data.get('indicators_1h', {}).get('s2', 'N/A')}
+## 3. EVIDENCE
+Explain WHY the decision was made using this data:
 
-### 4. FUNDAMENTALS & NEWS
+**Market Context:**
+- XRP Price: ${data.get('price', 'N/A')}
+- BTC Context: ${btc.get('price', 'N/A')} ({btc.get('change_24h', 0)}% 24h)
+- Regime: {data.get('regime', 'N/A')}
+- Sentiment: {data.get('sentiment', 'N/A')}
+
+**Technical Confluence (1H/4H):**
+- Trend: {ind_1h.get('trend', 'N/A')} / {ind_4h.get('trend', 'N/A')}
+- RSI: {ind_1h.get('rsi', 'N/A')} / {ind_4h.get('rsi', 'N/A')} (Oversold <30, Overbought >70)
+- Volume Ratio: {ind_1h.get('volume_ratio', 'N/A')}x (>1.0 = strong)
+- BB Status: {ind_1h.get('bb_status', 'N/A')}
+- ADX: {ind_1h.get('adx', 'N/A')} (>25 = trending)
+
+**Market Structure:**
+- Pivot: {ind_1h.get('pivot', 'N/A')} | R1: {ind_1h.get('r1', 'N/A')} | S1: {ind_1h.get('s1', 'N/A')}
+
+**Fundamentals & News:**
 {data.get('fundamentals', 'N/A')}
-- **News Sentiment:** {data.get('news', 'N/A')}
+- News: {data.get('news', 'N/A')}
 
-### INSTRUCTIONS
-1. Use Pivot Levels to define precise Entry, Stop Loss (SL), and Take Profit (TP) levels.
-2. **Recommendation:** (ACCUMULATE, HOLD, or REDUCE).
-3. **DCA Zones:** Provide clear price ranges for entries.
-4. **Risk Management:** MUST specify SL and TP levels for the current recommendation.
-5. Keep the report clean, using tables and bullet points.
+**AI Scoring:**
+- Confluence Score: (List which indicators align)
+- Risk Assessment: (What could go wrong?)
+
+---
+CRITICAL RULES:
+1. Decision MUST come first, not buried in analysis.
+2. Confidence level MUST be explicit (HIGH/MEDIUM/LOW).
+3. Trading Plan MUST be immediately executable (exact prices, no ranges except Buy Zone).
+4. Evidence MUST justify the decision, not replace it.
+5. Keep each section concise—traders scan, not read.
 """
