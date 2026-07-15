@@ -44,11 +44,10 @@ class AIService:
 
     def _build_prompt(self, data: dict) -> str:
         btc = data.get('btc_context', {})
-        ind_1h = data.get('indicators_1h', {})
-        ind_4h = data.get('indicators_4h', {})
+        ind = data.get('indicators', {})
         
         return f"""
-Generate a DECISION-FIRST trading report for XRP. Use this exact 3-section structure:
+Generate a DECISION-FIRST trading report for XRP using 4-hour timeframe. Use this exact 3-section structure:
 
 ## 1. EXECUTIVE SUMMARY
 - **Decision:** (ACCUMULATE / HOLD / REDUCE)
@@ -62,7 +61,7 @@ Generate a DECISION-FIRST trading report for XRP. Use this exact 3-section struc
 - **Position Size:** (% of capital based on risk)
 - **Risk/Reward Ratio:** (e.g., 1:2)
 
-## 3. EVIDENCE
+## 3. EVIDENCE (4-Hour Timeframe)
 Explain WHY the decision was made using this data:
 
 **Market Context:**
@@ -71,15 +70,15 @@ Explain WHY the decision was made using this data:
 - Regime: {data.get('regime', 'N/A')}
 - Sentiment: {data.get('sentiment', 'N/A')}
 
-**Technical Confluence (1H/4H):**
-- Trend: {ind_1h.get('trend', 'N/A')} / {ind_4h.get('trend', 'N/A')}
-- RSI: {ind_1h.get('rsi', 'N/A')} / {ind_4h.get('rsi', 'N/A')} (Oversold <30, Overbought >70)
-- Volume Ratio: {ind_1h.get('volume_ratio', 'N/A')}x (>1.0 = strong)
-- BB Status: {ind_1h.get('bb_status', 'N/A')}
-- ADX: {ind_1h.get('adx', 'N/A')} (>25 = trending)
+**Technical Analysis (4H):**
+- Trend: {ind.get('trend', 'N/A')}
+- RSI: {ind.get('rsi', 'N/A')} (Oversold <30, Overbought >70)
+- Volume Ratio: {ind.get('volume_ratio', 'N/A')}x (>1.0 = strong)
+- BB Status: {ind.get('bb_status', 'N/A')}
+- ADX: {ind.get('adx', 'N/A')} (>25 = trending)
 
 **Market Structure:**
-- Pivot: {ind_1h.get('pivot', 'N/A')} | R1: {ind_1h.get('r1', 'N/A')} | S1: {ind_1h.get('s1', 'N/A')}
+- Pivot: {ind.get('pivot', 'N/A')} | R1: {ind.get('r1', 'N/A')} | S1: {ind.get('s1', 'N/A')}
 
 **Fundamentals & News:**
 {data.get('fundamentals', 'N/A')}

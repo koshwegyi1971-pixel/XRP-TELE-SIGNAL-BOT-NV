@@ -10,12 +10,12 @@ class StrategyService:
         self.ai = AIService()
         self.fa_sentiment = FASentimentService()
 
-    async def generate_report(self, indicators_1h, indicators_4h, market_context):
+    async def generate_report(self, indicators_4h, market_context):
         """
-        Orchestrates the analysis using exchange-direct data.
+        Generates Decision-First report using 4-hour timeframe analysis.
         """
         try:
-            regime = RegimeService.detect(indicators_1h, indicators_4h)
+            regime = RegimeService.detect_4h(indicators_4h)
             sentiment = self.fa_sentiment.get_sentiment()
             news = self.fa_sentiment.get_news_sentiment()
             
@@ -29,11 +29,10 @@ class StrategyService:
             )
             
             analysis_data = {
-                "price": indicators_1h.get('price'),
+                "price": indicators_4h.get('price'),
                 "regime": regime,
                 "sentiment": sentiment,
-                "indicators_1h": indicators_1h,
-                "indicators_4h": indicators_4h,
+                "indicators": indicators_4h,
                 "fundamentals": fundamentals,
                 "news": news,
                 "btc_context": {

@@ -4,26 +4,21 @@ logger = logging.getLogger(__name__)
 
 class RegimeService:
     @staticmethod
-    def detect(indicators_1h: dict, indicators_4h: dict) -> str:
+    def detect_4h(indicators_4h: dict) -> str:
         """
-        Detects the current market regime based on TA indicators.
+        Detects market regime based on 4-hour indicators only.
         """
         try:
-            adx = indicators_1h.get('adx', 0)
-            rsi = indicators_1h.get('rsi', 50)
-            trend_1h = indicators_1h.get('trend', 'Sideways')
-            trend_4h = indicators_4h.get('trend', 'Sideways')
+            adx = indicators_4h.get('adx', 0)
+            rsi = indicators_4h.get('rsi', 50)
+            trend = indicators_4h.get('trend', 'Sideways')
 
             # Regime Logic
             if adx > 25:
-                if trend_1h == "Strong Bullish" and trend_4h in ["Strong Bullish", "Bullish"]:
+                if "Bullish" in trend:
                     return "Trending Bull (Strong)"
-                elif trend_1h == "Strong Bearish" and trend_4h in ["Strong Bearish", "Bearish"]:
+                elif "Bearish" in trend:
                     return "Trending Bear (Strong)"
-                elif "Bullish" in trend_1h:
-                    return "Trending Bull"
-                elif "Bearish" in trend_1h:
-                    return "Trending Bear"
             
             if 40 < rsi < 60 and adx < 20:
                 return "Sideways / Consolidation"

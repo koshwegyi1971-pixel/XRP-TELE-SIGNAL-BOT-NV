@@ -18,26 +18,25 @@ class XRPBot:
         self.telegram = TelegramService(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)
 
     async def run_analysis(self):
-        logger.info("Running advanced market analysis...")
+        logger.info("Running 4-hour market analysis...")
         try:
-            # 1. Fetch data for XRP and BTC
+            # 1. Fetch 4-hour data only
             market_context = self.market.get_market_context()
             xrp_data = market_context["xrp"]
             
-            if "1h" not in xrp_data or "4h" not in xrp_data:
-                logger.error("Insufficient market data fetched.")
+            if "4h" not in xrp_data:
+                logger.error("Insufficient 4-hour market data fetched.")
                 return
 
-            # 2. Calculate Advanced Indicators
-            indicators_1h = IndicatorService.analyze(xrp_data["1h"])
+            # 2. Calculate Indicators for 4-hour timeframe
             indicators_4h = IndicatorService.analyze(xrp_data["4h"])
 
-            # 3. Generate Report via Strategy Service (Institutional Grade)
-            report = await self.strategy.generate_report(indicators_1h, indicators_4h, market_context)
+            # 3. Generate Decision-First Report
+            report = await self.strategy.generate_report(indicators_4h, market_context)
 
             # 4. Send to Telegram
             await self.telegram.send_message(report)
-            logger.info("Institutional report sent to Telegram.")
+            logger.info("Decision report sent to Telegram.")
 
         except Exception as e:
             logger.error(f"Error in run_analysis: {e}")
